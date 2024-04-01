@@ -1,6 +1,6 @@
 use anyhow::Result;
-use clap::{builder::ValueParser, Arg, Command};
-use std::path::PathBuf;
+use camino::Utf8PathBuf;
+use clap::{value_parser, Arg, Command};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -8,14 +8,14 @@ fn main() -> Result<()> {
     let matches = Command::new("neo")
         .version("0.1")
         .subcommand(
-            Command::new("push").arg(Arg::new("path").value_parser(ValueParser::path_buf())),
+            Command::new("push").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
         )
         .subcommand(Command::new("list"))
         .get_matches();
 
     match matches.subcommand() {
         Some(("list", _)) => list(),
-        Some(("push", m)) => push(m.get_one::<PathBuf>("path").unwrap()),
+        Some(("push", m)) => push(&m.get_one::<Utf8PathBuf>("path").unwrap()),
         _ => unreachable!(),
     }
 }
@@ -32,7 +32,7 @@ fn list() -> Result<()> {
     Ok(())
 }
 
-fn push(p: &PathBuf) -> Result<()> {
+fn push(p: &Utf8PathBuf) -> Result<()> {
     client()?.push(p)?;
     Ok(())
 }

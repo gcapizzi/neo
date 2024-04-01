@@ -1,5 +1,5 @@
+use camino::Utf8PathBuf;
 use serde::Deserialize;
-use std::path::PathBuf;
 
 #[derive(Deserialize)]
 struct ListRes {
@@ -27,7 +27,7 @@ pub enum Error {
     #[error("{0}")]
     Transport(String),
     #[error("path {0} is invalid")]
-    Path(PathBuf),
+    Path(String),
     #[error(transparent)]
     Json(#[from] std::io::Error),
 }
@@ -66,15 +66,11 @@ impl Client {
         Ok(res.files)
     }
 
-    pub fn push(&self, p: &PathBuf) -> Result<()> {
-        let file_name: &str = p
-            .file_name()
-            .ok_or(Error::Path(p.to_owned()))?
-            .to_str()
-            .ok_or(Error::Path(p.to_owned()))?;
+    pub fn push(&self, p: &Utf8PathBuf) -> Result<()> {
+        let file_name: &str = p.file_name().ok_or(Error::Path(p.to_string()))?;
 
         let mut m = multipart::client::lazy::Multipart::new();
-        m.add_file(file_name, p.clone());
+        m.add_file(file_name, p.to_string());
         let mdata = m.prepare().unwrap();
         let content_type = format!("multipart/form-data; boundary={}", mdata.boundary());
 
