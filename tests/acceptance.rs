@@ -5,7 +5,7 @@ use predicates::prelude::*;
 use rand::distributions::{Alphanumeric, DistString};
 
 #[test]
-fn it_can_upload_a_file() -> Result<()> {
+fn it_can_upload_a_file_and_delete_it() -> Result<()> {
     let file = NamedTempFile::new("file.txt")?;
     let content = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
     file.write_str(&content)?;
@@ -22,6 +22,18 @@ fn it_can_upload_a_file() -> Result<()> {
         .assert()
         .try_success()?
         .try_stdout(predicate::str::contains(format!("{} file.txt", sha1)))?;
+
+    Command::cargo_bin("neo")?
+        .arg("delete")
+        .arg("file.txt")
+        .assert()
+        .try_success()?;
+
+    Command::cargo_bin("neo")?
+        .arg("list")
+        .assert()
+        .try_success()?
+        .try_stdout(predicate::str::contains("file.txt").not())?;
 
     Ok(())
 }

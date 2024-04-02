@@ -81,4 +81,12 @@ impl Client {
 
         Ok(())
     }
+
+    pub fn delete(&self, f: &Utf8Path) -> Result<()> {
+        ureq::post("https://neocities.org/api/delete")
+            .set("Authorization", &format!("Bearer {}", self.api_key))
+            .send_form(&[("filenames[]", f.as_str())])?;
+
+        Ok(())
+    }
 }

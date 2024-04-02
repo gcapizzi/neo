@@ -11,11 +11,15 @@ fn main() -> Result<()> {
             Command::new("push").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
         )
         .subcommand(Command::new("list"))
+        .subcommand(
+            Command::new("delete").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
+        )
         .get_matches();
 
     match matches.subcommand() {
         Some(("list", _)) => list(),
         Some(("push", m)) => push(&m.get_one::<Utf8PathBuf>("path").unwrap()),
+        Some(("delete", m)) => delete(&m.get_one::<Utf8PathBuf>("path").unwrap()),
         _ => unreachable!(),
     }
 }
@@ -34,5 +38,10 @@ fn list() -> Result<()> {
 
 fn push(p: &Utf8Path) -> Result<()> {
     client()?.push(p)?;
+    Ok(())
+}
+
+fn delete(f: &Utf8Path) -> Result<()> {
+    client()?.delete(f)?;
     Ok(())
 }
