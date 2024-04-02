@@ -1,5 +1,5 @@
 use anyhow::Result;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use clap::{value_parser, Arg, Command};
 
 fn main() -> Result<()> {
@@ -32,7 +32,7 @@ fn list() -> Result<()> {
     Ok(())
 }
 
-fn push(p: &Utf8PathBuf) -> Result<()> {
+fn push(p: &Utf8Path) -> Result<()> {
     client()?.push(p)?;
     Ok(())
 }

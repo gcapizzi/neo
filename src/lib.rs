@@ -1,4 +1,4 @@
-use camino::Utf8PathBuf;
+use camino::Utf8Path;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -66,7 +66,7 @@ impl Client {
         Ok(res.files)
     }
 
-    pub fn push(&self, p: &Utf8PathBuf) -> Result<()> {
+    pub fn push(&self, p: &Utf8Path) -> Result<()> {
         let file_name: &str = p.file_name().ok_or(Error::Path(p.to_string()))?;
 
         let mut m = multipart::client::lazy::Multipart::new();
