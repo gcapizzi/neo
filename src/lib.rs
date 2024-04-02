@@ -58,7 +58,7 @@ impl Client {
         Client { api_key }
     }
 
-    pub fn list(&self) -> Result<Vec<File>, Error> {
+    pub fn list(&self) -> Result<Vec<File>> {
         let res: ListRes = ureq::get("https://neocities.org/api/list")
             .set("Authorization", &format!("Bearer {}", self.api_key))
             .call()?

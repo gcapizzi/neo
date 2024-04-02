@@ -7,10 +7,10 @@ fn main() -> Result<()> {
 
     let matches = Command::new("neo")
         .version("0.1")
+        .subcommand(Command::new("list"))
         .subcommand(
             Command::new("push").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
         )
-        .subcommand(Command::new("list"))
         .subcommand(
             Command::new("delete").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
         )
