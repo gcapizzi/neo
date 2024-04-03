@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use camino::{Utf8Path, Utf8PathBuf};
-use clap::{value_parser, Arg, Command, ArgAction};
+use clap::{value_parser, Arg, ArgAction, Command};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -9,17 +9,25 @@ fn main() -> Result<()> {
         .version("0.1")
         .subcommand(Command::new("list"))
         .subcommand(
-            Command::new("push").arg(Arg::new("path").action(ArgAction::Append).value_parser(value_parser!(Utf8PathBuf))),
+            Command::new("push").arg(
+                Arg::new("path")
+                    .action(ArgAction::Append)
+                    .value_parser(value_parser!(Utf8PathBuf)),
+            ),
         )
         .subcommand(
-            Command::new("delete").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
+            Command::new("delete").arg(
+                Arg::new("path")
+                    .action(ArgAction::Append)
+                    .value_parser(value_parser!(Utf8PathBuf)),
+            ),
         )
         .get_matches();
 
     match matches.subcommand() {
         Some(("list", _)) => list(),
         Some(("push", m)) => push(m.get_many::<Utf8PathBuf>("path").unwrap()),
-        Some(("delete", m)) => delete(&m.get_one::<Utf8PathBuf>("path").unwrap()),
+        Some(("delete", m)) => delete(m.get_many::<Utf8PathBuf>("path").unwrap()),
         _ => unreachable!(),
     }
 }
@@ -52,7 +60,7 @@ fn push<'a, I: IntoIterator<Item = &'a Utf8PathBuf>>(paths: I) -> Result<()> {
     Ok(())
 }
 
-fn delete(f: &Utf8Path) -> Result<()> {
-    client()?.delete(f)?;
+fn delete<'a, I: IntoIterator<Item = &'a Utf8PathBuf>>(paths: I) -> Result<()> {
+    client()?.delete(paths.into_iter().map(|p| p.as_path()))?;
     Ok(())
 }

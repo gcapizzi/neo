@@ -85,10 +85,17 @@ impl Client {
         Ok(())
     }
 
-    pub fn delete(&self, f: &Utf8Path) -> Result<()> {
+    pub fn delete<'a, I>(&self, paths: I) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a Utf8Path>,
+    {
+        let filenames = paths
+            .into_iter()
+            .map(|p| ("filenames[]", p.as_str()))
+            .collect::<Vec<_>>();
         ureq::post("https://neocities.org/api/delete")
             .set("Authorization", &format!("Bearer {}", self.api_key))
-            .send_form(&[("filenames[]", f.as_str())])?;
+            .send_form(&filenames)?;
 
         Ok(())
     }
@@ -109,22 +116,22 @@ mod tests {
         let (file3, file3_sha) = random_txt("file3.txt")?;
 
         client.push(vec![
-            ("up/file1.txt".into(), file1.path().try_into()?),
-            ("up/file2.txt".into(), file2.path().try_into()?),
-            ("up/file3.txt".into(), file3.path().try_into()?),
+            ("up1/file.txt".into(), file1.path().try_into()?),
+            ("up2/file.txt".into(), file2.path().try_into()?),
+            ("up3/file.txt".into(), file3.path().try_into()?),
         ])?;
 
         let files = client.list()?;
 
-        let found_file1 = files.iter().find(|f| f.path == "up/file1.txt").unwrap();
-        let found_file2 = files.iter().find(|f| f.path == "up/file2.txt").unwrap();
-        let found_file3 = files.iter().find(|f| f.path == "up/file3.txt").unwrap();
+        let found_file1 = files.iter().find(|f| f.path == "up1/file.txt").unwrap();
+        let found_file2 = files.iter().find(|f| f.path == "up2/file.txt").unwrap();
+        let found_file3 = files.iter().find(|f| f.path == "up3/file.txt").unwrap();
 
         assert_eq!(Some(file1_sha), found_file1.sha1_hash);
         assert_eq!(Some(file2_sha), found_file2.sha1_hash);
         assert_eq!(Some(file3_sha), found_file3.sha1_hash);
 
-        client.delete("up".into())?;
+        client.delete(vec!["up1".into(), "up2".into(), "up3".into()])?;
 
         Ok(())
     }

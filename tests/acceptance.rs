@@ -29,17 +29,7 @@ fn it_can_upload_a_file_and_delete_it() -> Result<()> {
     Command::cargo_bin("neo")?
         .arg("delete")
         .arg("file1.txt")
-        .assert()
-        .try_success()?;
-
-    Command::cargo_bin("neo")?
-        .arg("delete")
         .arg("file2.txt")
-        .assert()
-        .try_success()?;
-
-    Command::cargo_bin("neo")?
-        .arg("delete")
         .arg("file3.txt")
         .assert()
         .try_success()?;
@@ -48,7 +38,9 @@ fn it_can_upload_a_file_and_delete_it() -> Result<()> {
         .arg("list")
         .assert()
         .try_success()?
-        .try_stdout(predicate::str::contains("file.txt").not())?;
+        .try_stdout(predicate::str::contains("file1.txt").not())?
+        .try_stdout(predicate::str::contains("file2.txt").not())?
+        .try_stdout(predicate::str::contains("file3.txt").not())?;
 
     Ok(())
 }
