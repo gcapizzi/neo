@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use camino::{Utf8Path, Utf8PathBuf};
-use clap::{value_parser, Arg, ArgAction, Command};
+use camino::Utf8Path;
+use clap::{Arg, ArgAction, Command};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -8,26 +8,14 @@ fn main() -> Result<()> {
     let matches = Command::new("neo")
         .version("0.1")
         .subcommand(Command::new("list"))
-        .subcommand(
-            Command::new("push").arg(
-                Arg::new("path")
-                    .action(ArgAction::Append)
-                    .value_parser(value_parser!(Utf8PathBuf)),
-            ),
-        )
-        .subcommand(
-            Command::new("delete").arg(
-                Arg::new("path")
-                    .action(ArgAction::Append)
-                    .value_parser(value_parser!(Utf8PathBuf)),
-            ),
-        )
+        .subcommand(Command::new("push").arg(Arg::new("path").action(ArgAction::Append)))
+        .subcommand(Command::new("delete").arg(Arg::new("path").action(ArgAction::Append)))
         .get_matches();
 
     match matches.subcommand() {
         Some(("list", _)) => list(),
-        Some(("push", m)) => push(m.get_many::<Utf8PathBuf>("path").unwrap()),
-        Some(("delete", m)) => delete(m.get_many::<Utf8PathBuf>("path").unwrap()),
+        Some(("push", m)) => push(m.get_many::<String>("path").unwrap()),
+        Some(("delete", m)) => delete(m.get_many::<String>("path").unwrap()),
         _ => unreachable!(),
     }
 }
@@ -44,23 +32,20 @@ fn list() -> Result<()> {
     Ok(())
 }
 
-fn push<'a, I: IntoIterator<Item = &'a Utf8PathBuf>>(paths: I) -> Result<()> {
+fn push<'a, I: IntoIterator<Item = &'a String>>(paths: I) -> Result<()> {
     let entries = paths
         .into_iter()
         .map(|p| {
-            let src = p.as_path();
-            let dst: &Utf8Path = p
-                .file_name()
-                .ok_or(anyhow!("invalid path: {}", p))?
-                .try_into()?;
-            Ok((dst, src))
+            let utf_path = Utf8Path::new(p);
+            let file_name = utf_path.file_name().ok_or(anyhow!("invalid path: {}", p))?;
+            Ok((file_name, utf_path))
         })
         .collect::<Result<Vec<_>>>()?;
     client()?.push(entries)?;
     Ok(())
 }
 
-fn delete<'a, I: IntoIterator<Item = &'a Utf8PathBuf>>(paths: I) -> Result<()> {
-    client()?.delete(paths.into_iter().map(|p| p.as_path()))?;
+fn delete<'a, I: IntoIterator<Item = &'a String>>(paths: I) -> Result<()> {
+    client()?.delete(paths)?;
     Ok(())
 }

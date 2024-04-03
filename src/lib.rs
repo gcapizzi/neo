@@ -66,13 +66,15 @@ impl Client {
         Ok(res.files)
     }
 
-    pub fn push<'a, I>(&self, entries: I) -> Result<()>
+    pub fn push<I, N, C>(&self, entries: I) -> Result<()>
     where
-        I: IntoIterator<Item = (&'a Utf8Path, &'a Utf8Path)>,
+        N: AsRef<Utf8Path>,
+        C: AsRef<Utf8Path>,
+        I: IntoIterator<Item = (N, C)>,
     {
         let mut m = multipart::client::lazy::Multipart::new();
         for (name, content) in entries {
-            m.add_file(name.to_string(), content.to_string());
+            m.add_file(name.as_ref().to_string(), content.as_ref().to_string());
         }
         let mdata = m.prepare().unwrap();
         let content_type = format!("multipart/form-data; boundary={}", mdata.boundary());
@@ -85,17 +87,22 @@ impl Client {
         Ok(())
     }
 
-    pub fn delete<'a, I>(&self, paths: I) -> Result<()>
+    pub fn delete<I, P>(&self, paths: I) -> Result<()>
     where
-        I: IntoIterator<Item = &'a Utf8Path>,
+        P: AsRef<Utf8Path>,
+        I: IntoIterator<Item = P>,
     {
-        let filenames = paths
+        let file_names = paths
             .into_iter()
-            .map(|p| ("filenames[]", p.as_str()))
+            .map(|p| p.as_ref().to_string())
+            .collect::<Vec<_>>();
+        let form = file_names
+            .iter()
+            .map(|f| ("filenames[]", f.as_str()))
             .collect::<Vec<_>>();
         ureq::post("https://neocities.org/api/delete")
             .set("Authorization", &format!("Bearer {}", self.api_key))
-            .send_form(&filenames)?;
+            .send_form(&form)?;
 
         Ok(())
     }
@@ -105,6 +112,7 @@ impl Client {
 mod tests {
     use anyhow::Result;
     use assert_fs::fixture::{FileWriteStr, NamedTempFile};
+    use camino::Utf8Path;
     use rand::distributions::{Alphanumeric, DistString};
 
     #[test]
@@ -116,9 +124,9 @@ mod tests {
         let (file3, file3_sha) = random_txt("file3.txt")?;
 
         client.push(vec![
-            ("up1/file.txt".into(), file1.path().try_into()?),
-            ("up2/file.txt".into(), file2.path().try_into()?),
-            ("up3/file.txt".into(), file3.path().try_into()?),
+            ("up1/file.txt", Utf8Path::from_path(file1.path()).unwrap()),
+            ("up2/file.txt", Utf8Path::from_path(file2.path()).unwrap()),
+            ("up3/file.txt", Utf8Path::from_path(file3.path()).unwrap()),
         ])?;
 
         let files = client.list()?;
@@ -131,7 +139,7 @@ mod tests {
         assert_eq!(Some(file2_sha), found_file2.sha1_hash);
         assert_eq!(Some(file3_sha), found_file3.sha1_hash);
 
-        client.delete(vec!["up1".into(), "up2".into(), "up3".into()])?;
+        client.delete(vec!["up1", "up2", "up3"])?;
 
         Ok(())
     }
