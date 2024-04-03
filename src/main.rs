@@ -1,6 +1,6 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use camino::{Utf8Path, Utf8PathBuf};
-use clap::{value_parser, Arg, Command};
+use clap::{value_parser, Arg, Command, ArgAction};
 
 fn main() -> Result<()> {
     env_logger::init();
@@ -9,7 +9,7 @@ fn main() -> Result<()> {
         .version("0.1")
         .subcommand(Command::new("list"))
         .subcommand(
-            Command::new("push").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
+            Command::new("push").arg(Arg::new("path").action(ArgAction::Append).value_parser(value_parser!(Utf8PathBuf))),
         )
         .subcommand(
             Command::new("delete").arg(Arg::new("path").value_parser(value_parser!(Utf8PathBuf))),
@@ -18,7 +18,7 @@ fn main() -> Result<()> {
 
     match matches.subcommand() {
         Some(("list", _)) => list(),
-        Some(("push", m)) => push(&m.get_one::<Utf8PathBuf>("path").unwrap()),
+        Some(("push", m)) => push(m.get_many::<Utf8PathBuf>("path").unwrap()),
         Some(("delete", m)) => delete(&m.get_one::<Utf8PathBuf>("path").unwrap()),
         _ => unreachable!(),
     }
@@ -36,8 +36,19 @@ fn list() -> Result<()> {
     Ok(())
 }
 
-fn push(p: &Utf8Path) -> Result<()> {
-    client()?.push(p)?;
+fn push<'a, I: IntoIterator<Item = &'a Utf8PathBuf>>(paths: I) -> Result<()> {
+    let entries = paths
+        .into_iter()
+        .map(|p| {
+            let src = p.as_path();
+            let dst: &Utf8Path = p
+                .file_name()
+                .ok_or(anyhow!("invalid path: {}", p))?
+                .try_into()?;
+            Ok((dst, src))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    client()?.push(entries)?;
     Ok(())
 }
 

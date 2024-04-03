@@ -66,11 +66,14 @@ impl Client {
         Ok(res.files)
     }
 
-    pub fn push(&self, p: &Utf8Path) -> Result<()> {
-        let file_name: &str = p.file_name().ok_or(Error::Path(p.to_string()))?;
-
+    pub fn push<'a, I>(&self, entries: I) -> Result<()>
+    where
+        I: IntoIterator<Item = (&'a Utf8Path, &'a Utf8Path)>,
+    {
         let mut m = multipart::client::lazy::Multipart::new();
-        m.add_file(file_name, p.to_string());
+        for (name, content) in entries {
+            m.add_file(name.to_string(), content.to_string());
+        }
         let mdata = m.prepare().unwrap();
         let content_type = format!("multipart/form-data; boundary={}", mdata.boundary());
 
@@ -88,5 +91,49 @@ impl Client {
             .send_form(&[("filenames[]", f.as_str())])?;
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use assert_fs::fixture::{FileWriteStr, NamedTempFile};
+    use rand::distributions::{Alphanumeric, DistString};
+
+    #[test]
+    fn pushing_listing_and_deleting_files() -> Result<()> {
+        let client = super::Client::new(std::env::var("NEOCITIES_API_KEY")?);
+
+        let (file1, file1_sha) = random_txt("file1.txt")?;
+        let (file2, file2_sha) = random_txt("file2.txt")?;
+        let (file3, file3_sha) = random_txt("file3.txt")?;
+
+        client.push(vec![
+            ("up/file1.txt".into(), file1.path().try_into()?),
+            ("up/file2.txt".into(), file2.path().try_into()?),
+            ("up/file3.txt".into(), file3.path().try_into()?),
+        ])?;
+
+        let files = client.list()?;
+
+        let found_file1 = files.iter().find(|f| f.path == "up/file1.txt").unwrap();
+        let found_file2 = files.iter().find(|f| f.path == "up/file2.txt").unwrap();
+        let found_file3 = files.iter().find(|f| f.path == "up/file3.txt").unwrap();
+
+        assert_eq!(Some(file1_sha), found_file1.sha1_hash);
+        assert_eq!(Some(file2_sha), found_file2.sha1_hash);
+        assert_eq!(Some(file3_sha), found_file3.sha1_hash);
+
+        client.delete("up".into())?;
+
+        Ok(())
+    }
+
+    fn random_txt(filename: &str) -> Result<(NamedTempFile, String)> {
+        let file = NamedTempFile::new(filename)?;
+        let content = Alphanumeric.sample_string(&mut rand::thread_rng(), 16);
+        file.write_str(&content)?;
+        let sha1 = sha1_smol::Sha1::from(content).hexdigest();
+        Ok((file, sha1))
     }
 }
